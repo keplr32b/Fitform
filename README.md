@@ -37,6 +37,7 @@ IMPROVED → genome / generation update
 REJECTED → no change
         ↓
 subjects read genome before acting
+```
 
 ## Non-goals
 
