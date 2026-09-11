@@ -98,6 +98,7 @@ genome = fitform.view().get_genome()
 # or
 if not fitform.view().allows("withdraw"):
     revert
+```
 
 ---
 
