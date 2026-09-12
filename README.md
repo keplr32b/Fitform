@@ -20,11 +20,21 @@ FitForm rewrites **its rules**, not arbitrary contract source code.
 
 FitForm is intentionally **stricter** on accept conditions and **narrower** on what may change.
 
-## Status
+## Live Studionet
 
-Design frozen. Implementation and Studionet deployment follow the design doc.
+| Role | Address |
+|------|---------|
+| FitForm (IMPROVED) | [0xC385015C5d5D4E501117e479036d7362E8aE4d42](https://explorer-studio.genlayer.com/address/0xC385015C5d5D4E501117e479036d7362E8aE4d42) |
+| FitForm (REJECTED demo) | [0x239C2a2ecBE5fC85Dccb245255856f98F9e1702A](https://explorer-studio.genlayer.com/address/0x239C2a2ecBE5fC85Dccb245255856f98F9e1702A) |
+| ExampleSubject | [0x9344A6aE69fD53FBBBbaD075898E93Bb9EDee294](https://explorer-studio.genlayer.com/address/0x9344A6aE69fD53FBBBbaD075898E93Bb9EDee294) |
 
-- Design: [`docs/DESIGN.md`](docs/DESIGN.md)
+Proven on-chain: REJECTED leaves generation at 0; IMPROVED sets generation 1 and fitness 870; subject status RESTRICTED and `act` reverts with `action not allowed by FitForm`.
+
+Full receipts: [verification/studionet-e2e.md](verification/studionet-e2e.md)
+
+## Design
+
+[docs/DESIGN.md](docs/DESIGN.md)
 
 ## Core idea
 
@@ -37,10 +47,9 @@ IMPROVED → genome / generation update
 REJECTED → no change
         ↓
 subjects read genome before acting
-```
+```text
 
 ## Non-goals
-
 - Full Python source mutation as identity
 - Forcing non-integrating contracts
 - Stablecoin / emergency halt product
