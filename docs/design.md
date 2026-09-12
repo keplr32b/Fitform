@@ -1,4 +1,4 @@
-# FitForm - Design
+# FitForm — Design
 
 ## Thesis
 
@@ -10,7 +10,7 @@ It rewrites **its rules** on a loop. It does not deploy arbitrary mutated Python
 
 ## Track fit
 
-Official idea: *Lifeform - a self-evolving contract that rewrites itself on a loop.*
+Official idea: *Lifeform — a self-evolving contract that rewrites itself on a loop.*
 
 FitForm interpretation:
 
@@ -54,7 +54,6 @@ FitForm is intentionally **stricter** on accept conditions and **narrower** on w
 
 ## Lifecycle
 
-```text
 DEPLOY
   owner, goal_text (immutable), initial genome, signal config
     ↓
@@ -68,76 +67,81 @@ IMPROVED → write genome, last_fitness, generation++
 REJECTED → no state change
     ↓
 SUBJECT contracts read genome / allows() before privileged actions
-```text
 
-### Core API (v1)
-
-```markdown
 ## Core API (v1)
 
 | Method | Who | Role |
 |--------|-----|------|
-| `allow_host` / `disallow_host` | Owner | Signal hygiene |
-| `evolve` | Anyone (post-cooldown) | Propose + consensus fitness gate |
-| `get_genome` / `get_goal` / `get_generation` / `get_last_fitness` | View | Read state |
-| `allows` | View | Integrator surface |
-| `is_host_allowed` | View | Debug |
-| `get_owner` | View | Owner address |
-```markdown
+| allow_host / disallow_host | Owner | Signal hygiene |
+| evolve | Anyone (post-cooldown) | Propose + consensus fitness gate |
+| get_genome / get_goal / get_generation / get_last_fitness | View | Read state |
+| allows | View | Integrator surface |
+| is_host_allowed | View | Debug |
+| get_owner | View | Owner address |
 
 ## Frozen signatures (Step 2)
 
 ### Storage
 
-- `owner: Address`
-- `goal_text: str`
-- `rule_text: str`
-- `threshold_milli: u256`
-- `signal_url: str`
-- `generation: u256`
-- `last_fitness_milli: u256`
-- `last_evolve_at: u256`
-- `allowed_hosts: TreeMap[str, bool]`
+- owner: Address
+- goal_text: str
+- rule_text: str
+- threshold_milli: u256
+- signal_url: str
+- generation: u256
+- last_fitness_milli: u256
+- last_evolve_at: u256
+- allowed_hosts: TreeMap[str, bool]
 
 ### Constructor
 
-`__init__(goal_text: str, rule_text: str, threshold_milli: u256, signal_url: str)`
+__init__(goal_text: str, rule_text: str, threshold_milli: u256, signal_url: str)
 
 ### Methods
 
-- `allow_host(host: str) -> None` — owner
-- `disallow_host(host: str) -> None` — owner
-- `evolve() -> str` — returns `IMPROVED` or `REJECTED`
-- `get_goal() -> str`
-- `get_genome() -> str` — JSON with rule_text, threshold_milli, signal_url
-- `get_generation() -> u256`
-- `get_last_fitness() -> u256`
-- `allows(action: str) -> bool`
-- `is_host_allowed(host: str) -> bool`
-- `get_owner() -> Address`
+- allow_host(host: str) -> None — owner
+- disallow_host(host: str) -> None — owner
+- evolve() -> str — returns IMPROVED or REJECTED
+- get_goal() -> str
+- get_genome() -> str — JSON with rule_text, threshold_milli, signal_url
+- get_generation() -> u256
+- get_last_fitness() -> u256
+- allows(action: str) -> bool
+- is_host_allowed(host: str) -> bool
+- get_owner() -> Address
 
 ### Constants
 
-- `COOLDOWN_SECS = 60` (demo default; document as parameter intent for later)
+- COOLDOWN_SECS = 60 (demo default; document as parameter intent for later)
 
 ## Consensus rules (v1)
 
-- Labels: `IMPROVED` | `REJECTED` only (no soft “maybe”)
-- Comparative principle: equivalent iff `decision` identical
+- Labels: IMPROVED | REJECTED only (no soft “maybe”)
+- Comparative principle: equivalent iff decision identical
 - Note / reasoning non-binding
-- IMPROVED requires parsed fitness strictly greater than `last_fitness` and goal-consistent judgment on signal
+- IMPROVED requires parsed fitness strictly greater than last_fitness and goal-consistent judgment on signal
 - Otherwise REJECTED
 
 ## Integration model
 
 Soft enforcement (same class as many GenLayer primitives):
 
-```text
 genome = fitform.view().get_genome()
 # or
 if not fitform.view().allows("withdraw"):
     revert
-```text
+
+Reference Subject contract in-repo must demonstrate behavior change after an IMPROVED evolve.
+
+## v1 vs v2
+
+| v1 (ship) | v2 (designed, later) |
+|-----------|----------------------|
+| Single allowlisted signal URL | Multi-signal / quorum |
+| Cooldown only | Evolve bond / slash path |
+| Same-contract genome update | Optional IMPROVED-only child lineage |
+| Owner host admin | Narrower governance / timelock on big jumps |
+| Studionet E2E | Audit + external integrator |
 
 ## Limits (always document)
 
@@ -155,7 +159,3 @@ if not fitform.view().allows("withdraw"):
 3. Subject gated action differs pre/post IMPROVED
 4. Unauthorized host / empty signal cannot IMPROVED
 5. README vs-official table + limits visible
-
-## License
-
-MIT
