@@ -1,4 +1,4 @@
-# FitForm — Design
+# FitForm - Design
 
 ## Thesis
 
@@ -10,7 +10,7 @@ It rewrites **its rules** on a loop. It does not deploy arbitrary mutated Python
 
 ## Track fit
 
-Official idea: *Lifeform — a self-evolving contract that rewrites itself on a loop.*
+Official idea: *Lifeform - a self-evolving contract that rewrites itself on a loop.*
 
 FitForm interpretation:
 
@@ -68,6 +68,7 @@ IMPROVED → write genome, last_fitness, generation++
 REJECTED → no state change
     ↓
 SUBJECT contracts read genome / allows() before privileged actions
+```text
 
 ---
 
@@ -84,6 +85,7 @@ SUBJECT contracts read genome / allows() before privileged actions
 | `allows` | View | Integrator surface |
 | `is_host_allowed` | View | Debug |
 | `get_owner` | View | Owner address |
+```markdown
 
 ## Frozen signatures (Step 2)
 
