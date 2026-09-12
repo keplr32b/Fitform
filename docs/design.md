@@ -70,8 +70,6 @@ REJECTED → no state change
 SUBJECT contracts read genome / allows() before privileged actions
 ```text
 
----
-
 ### Core API (v1)
 
 ```markdown
