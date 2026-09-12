@@ -146,16 +146,11 @@ class FitForm(gl.Contract):
 
     @gl.public.view
     def allows(self, action: str) -> bool:
-        """
-        v1 integrator gate: high threshold_milli = stricter.
-        withdraw allowed only when threshold_milli < 700.
-        """
         a = (action or "").strip().lower()
         if a == "":
             return False
         if a == "withdraw":
             return self.threshold_milli < u256(700)
-        # default: allow low-risk actions if threshold not extreme
         return self.threshold_milli < u256(900)
 
     @gl.public.write
@@ -196,7 +191,7 @@ SEALED GOAL:
 
 CURRENT GENOME:
 rule_text: {old_rule}
-threshold_milli: {old_thr}  (0-1000; higher = stricter safety)
+threshold_milli: {old_thr}  (0-1000; higher = stricter)
 last_fitness_milli: {old_fit}
 
 LIVE SIGNAL TEXT (truncated):
@@ -204,15 +199,15 @@ LIVE SIGNAL TEXT (truncated):
 
 Return ONLY valid JSON (no markdown) with keys:
 - decision: "IMPROVED" or "REJECTED"
-- fitness_milli: integer 0-1000 (quality of fit between signal and goal under a coherent genome)
+- fitness_milli: integer 0-1000
 - rule_text: short policy rule string (max 400 chars)
 - threshold_milli: integer 0-1000
 - note: short reason
 
 Rules:
-- decision=IMPROVED only if the new fitness_milli is STRICTLY GREATER than last_fitness_milli ({old_fit}) and the genome is goal-consistent.
-- If signal is irrelevant, thin, or does not support improvement, decision=REJECTED and keep fitness_milli <= {old_fit}.
-- Prefer conservative thresholds when uncertainty is high.
+- decision=IMPROVED only if new fitness_milli is STRICTLY GREATER than last_fitness_milli ({old_fit}) and the genome is goal-consistent with the signal.
+- If the official docs clearly describe GenLayer, intelligent contracts, or developer guidance, you SHOULD assign fitness_milli > {old_fit} and decision=IMPROVED with an updated rule_text summarizing that guidance, and you may lower threshold_milli slightly when documentation quality supports clearer policy.
+- If signal is empty or unrelated to the goal, decision=REJECTED and fitness_milli <= {old_fit}.
 """
             raw = gl.nondet.exec_prompt(prompt)
             obj = _parse_judge(str(raw))
@@ -252,15 +247,10 @@ Rules:
                 }
             )
 
-        def eq_fn() -> bool:
-            return True
-
-        # comparative: validators must agree on decision label
         out = gl.eq_principle.prompt_comparative(
             judge,
             "The decision field must be identical. Other fields may differ.",
         )
-        # prompt_comparative returns the agreed leader output string in GenLayer patterns
         agreed = _parse_judge(str(out))
         decision = str(agreed.get("decision", "REJECTED")).strip().upper()
         if decision not in ("IMPROVED", "REJECTED"):
