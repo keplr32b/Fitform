@@ -15,7 +15,7 @@
 | Constructor | goal=docs policy, signal=https://docs.genlayer.com, rule_mode=CLOSED, threshold=800 |
 | allow_host | `docs.genlayer.com` (host only, not full URL) |
 
-## Path A — First selection (CLOSED → OPEN)
+## Path A - First selection (CLOSED → OPEN)
 
 | Step | Result | Tx / note |
 |------|--------|-----------|
@@ -27,7 +27,7 @@
 | get_genome | OPEN, 550, parent CLOSED\|800\|Initial closed genome | |
 | allows(withdraw) | true | OPEN && thr < 700 |
 
-## Path B — Subject integration
+## Path B - Subject integration
 
 | Step | Result |
 |------|--------|
@@ -36,7 +36,7 @@
 | act | ok |
 | get_acts | 1 |
 
-## Path C — UPHOLD + second COMMIT
+## Path C - UPHOLD + second COMMIT
 
 | Step | Result |
 |------|--------|
@@ -47,7 +47,7 @@
 | committed_fitness | 925 |
 | parent_genome_hash | OPEN\|550\|… |
 
-## Path D — Recheck + further COMMITs
+## Path D - Recheck + further COMMITs
 
 | Step | Result | Tx |
 |------|--------|-----|
