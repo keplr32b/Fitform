@@ -24,9 +24,12 @@ FitForm is intentionally **stricter** on accept conditions and **narrower** on w
 
 | Role | Address |
 |------|---------|
-| FitForm (IMPROVED) | [0xC385015C5d5D4E501117e479036d7362E8aE4d42](https://explorer-studio.genlayer.com/address/0xC385015C5d5D4E501117e479036d7362E8aE4d42) |
-| FitForm (REJECTED demo) | [0x239C2a2ecBE5fC85Dccb245255856f98F9e1702A](https://explorer-studio.genlayer.com/address/0x239C2a2ecBE5fC85Dccb245255856f98F9e1702A) |
-| ExampleSubject | [0x9344A6aE69fD53FBBBbaD075898E93Bb9EDee294](https://explorer-studio.genlayer.com/address/0x9344A6aE69fD53FBBBbaD075898E93Bb9EDee294) |
+| FitForm | [0xf34d61dce2561A19a8691D966010F0B0C1377286](https://explorer-studio.genlayer.com/address/0xf34d61dce2561A19a8691D966010F0B0C1377286) |
+| ExampleSubject | [0x77677DA6ebd88c9a5DEAa19aCF5025E10e427CfC](https://explorer-studio.genlayer.com/address/0x77677DA6ebd88c9a5DEAa19aCF5025E10e427CfC) |
+
+Proven: CLOSED → PENDING (staged OPEN) → COMMIT → allows true → subject act ok. Generation 1, fitness 850, parent hash retained.
+
+Receipts: [verification/studionet-e2e.md](verification/studionet-e2e.md)
 
 Proven on-chain: REJECTED leaves generation at 0; IMPROVED sets generation 1 and fitness 870; subject status RESTRICTED and `act` reverts with `action not allowed by FitForm`.
 
