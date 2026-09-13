@@ -1,24 +1,22 @@
 # FitForm
 
-Fitness-gated **self-evolving rules** for GenLayer (Lifeform track).
+**Mutation + selection** for GenLayer (Lifeform track).
 
-A sealed goal plus a bounded genome (rule text / parameters). Anyone may call `evolve`. Validators fetch an allowlisted public signal and reach comparative consensus on a closed label: **IMPROVED** or **REJECTED**. The genome updates only on **IMPROVED** — when fitness is strictly better under the sealed goal. Integrator contracts read the genome (or `allows`) before privileged actions.
+A sealed goal plus a bounded genome (`rule_mode`, `threshold_milli`). Anyone may `propose_evolve`. Validators score an allowlisted HTTPS signal under comparative consensus. Only **PENDING** stages a candidate; live `allows()` stays on the committed genome until **finalize** after the challenge window. **COMMIT** updates generation, fitness, parent hash, and history.
 
-> Track idea: *A self-evolving contract that rewrites itself on a loop.*
+> Track: *A self-evolving contract that rewrites itself on a loop.*
 
-FitForm rewrites **its rules**, not arbitrary contract source code.
+FitForm rewrites **rules**, not arbitrary contract source code. Foundation-style organisms mutate freely; FitForm mutates **and selects**.
 
 ## Versus Foundation Living Organism
 
 | | Foundation Living Organism | FitForm |
 |--|----------------------------|---------|
-| What evolves | Full contract source code | Bounded genome (params / rule text) |
-| Accept rule | Structural preserve | **IMPROVED** fitness vs sealed goal + signal |
-| Deployment | Always `deploy_contract` child | Same-contract update (v1) |
-| Success signal | Meaningful mutation + structure checks | Measurable fitness increase |
-| Failure | Broken child; parent intact | Reject; genome unchanged |
-
-FitForm is intentionally **stricter** on accept conditions and **narrower** on what may change.
+| What evolves | Full contract source code | Bounded genome (rule_mode + threshold) |
+| Selection | Structure checks only | Fitness + PENDING + challenge window + COMMIT |
+| Deployment | Child contracts via deploy_contract | Same contract; live genome on COMMIT |
+| Loop | Permissionless evolve | Permissionless recheck + propose + finalize |
+| Failure | Broken child; parent intact | REJECTED / REVERT / window enforcement |
 
 ## Live Studionet
 
@@ -27,11 +25,14 @@ FitForm is intentionally **stricter** on accept conditions and **narrower** on w
 | FitForm | [0xf34d61dce2561A19a8691D966010F0B0C1377286](https://explorer-studio.genlayer.com/address/0xf34d61dce2561A19a8691D966010F0B0C1377286) |
 | ExampleSubject | [0x77677DA6ebd88c9a5DEAa19aCF5025E10e427CfC](https://explorer-studio.genlayer.com/address/0x77677DA6ebd88c9a5DEAa19aCF5025E10e427CfC) |
 
-Proven: CLOSED → PENDING (staged OPEN) → COMMIT → allows true → subject act ok. Generation 1, fitness 850, parent hash retained.
+Proven on-chain:
 
-Receipts: [verification/studionet-e2e.md](verification/studionet-e2e.md)
-
-Proven on-chain: REJECTED leaves generation at 0; IMPROVED sets generation 1 and fitness 870; subject status RESTRICTED and `act` reverts with `action not allowed by FitForm`.
+- CLOSED → PENDING (staged OPEN) → COMMIT → `allows(withdraw)=true` → subject `act` ok
+- Live `allows` stays false while PENDING
+- UPHOLD + further COMMIT (generation lineage)
+- Challenge window closed enforcement
+- `recheck` → STABLE
+- Parent genome hash + history on COMMIT
 
 Full receipts: [verification/studionet-e2e.md](verification/studionet-e2e.md)
 
@@ -39,33 +40,29 @@ Full receipts: [verification/studionet-e2e.md](verification/studionet-e2e.md)
 
 [docs/DESIGN.md](docs/DESIGN.md)
 
-## Core idea
+## Core flow
 
 ```text
-goal (immutable) + genome (mutable)
-        ↓
-evolve() → signal + consensus
-        ↓
-IMPROVED → genome / generation update
-REJECTED → no change
-        ↓
-subjects read genome before acting
+propose_evolve → REJECTED | PENDING
+challenge (while open) → REVERT | UPHOLD
+finalize_evolve (after window) → COMMIT
+recheck → STABLE | DRIFT
+allows() reads LIVE genome only
 ```text
 
 ## Non-goals
-- Full Python source mutation as identity
-- Forcing non-integrating contracts
-- Stablecoin / emergency halt product
-- Owner silently rewriting goal or fake fitness
-- Mainnet production SLA without audit and real integrators
+
+- Full Python source mutation or deploy_contract children
+- In-contract auto-queue propose from recheck
+- Multi-sig evolution council
+- Challenge bond (cooldown is from last propose; 300s challenge window usually exceeds it)
 
 ## Limits
 
-- Soft enforce: contracts must call FitForm views
-- Genome is bounded; not unbounded code evolution
-- Signal quality depends on allowlisted HTTPS sources
+- Soft enforce: integrators must call allows
+- Studionet is not a production SLA
 - LLM judgment is point-in-time under closed labels
-- Testnet / Studionet deployments are not a production SLA
+- Permissionless loop needs external callers
 
 ## License
 
