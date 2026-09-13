@@ -103,7 +103,7 @@ class FitForm(gl.Contract):
     extinct: bool
 
     allowed_hosts: TreeMap[str, bool]
-    history: DynArray[str]
+    history_blob: str
 
     def __init__(
         self,
@@ -136,7 +136,7 @@ class FitForm(gl.Contract):
         self.failed_propose_count = u256(0)
         self.extinct = False
         self.allowed_hosts = TreeMap()
-        self.history = DynArray()
+        self.history_blob = "[]"
 
     def _only_owner(self) -> None:
         require(gl.message.sender_address == self.owner, "owner only")
@@ -145,16 +145,31 @@ class FitForm(gl.Contract):
         require(self.extinct is False, "extinct")
 
     def _history_tail(self) -> str:
-        n = len(self.history)
-        if n == 0:
+        try:
+            arr = json.loads(self.history_blob)
+        except Exception:
+            arr = []
+        if not isinstance(arr, list) or len(arr) == 0:
             return "(no history)"
         parts = []
         start = 0
-        if n > 3:
-            start = n - 3
-        for i in range(start, n):
-            parts.append(str(self.history[i]))
+        if len(arr) > 3:
+            start = len(arr) - 3
+        for i in range(start, len(arr)):
+            parts.append(str(arr[i]))
         return "\n".join(parts)
+
+    def _history_push(self, rec: str) -> None:
+        try:
+            arr = json.loads(self.history_blob)
+        except Exception:
+            arr = []
+        if not isinstance(arr, list):
+            arr = []
+        arr.append(rec)
+        if len(arr) > 8:
+            arr = arr[len(arr) - 8 :]
+        self.history_blob = json.dumps(arr)
 
     @gl.public.write
     def allow_host(self, host: str) -> None:
@@ -200,6 +215,10 @@ class FitForm(gl.Contract):
     @gl.public.view
     def is_pending(self) -> bool:
         return self.pending_active
+
+    @gl.public.view
+    def get_history(self) -> str:
+        return self.history_blob
 
     @gl.public.view
     def get_genome(self) -> str:
@@ -280,13 +299,13 @@ class FitForm(gl.Contract):
                 )
             prompt = f"""
 You propose a bounded policy genome under a SEALED GOAL using a LIVE SIGNAL.
-Selection pressure: only propose PENDING if fitness strictly improves.
+PENDING only if fitness strictly improves.
 
 SEALED GOAL:
 {goal}
 
 LIVE GENOME:
-rule_mode: {live_mode}  (CLOSED|OWNER_ONLY|OPEN)
+rule_mode: {live_mode}
 threshold_milli: {live_thr}
 rule_note: {live_note}
 committed_fitness_milli: {live_fit}
@@ -307,7 +326,7 @@ Return ONLY JSON:
 
 Rules:
 - PENDING only if fitness_milli > {live_fit} and genome is goal-consistent with the signal.
-- If official GenLayer docs clearly support clearer protocol policy, prefer PENDING with higher fitness and rule_mode OPEN with threshold_milli between 400 and 650 when appropriate.
+- If official GenLayer docs clearly describe intelligent contracts and developer guidance, prefer PENDING with higher fitness, rule_mode OPEN, and threshold_milli between 400 and 650.
 - If signal is weak or unrelated, REJECTED and fitness_milli <= {live_fit}.
 """
             raw = gl.nondet.exec_prompt(prompt)
@@ -402,25 +421,18 @@ Rules:
         def judge() -> str:
             body = gl.nondet.web.render(url, mode="text")
             prompt = f"""
-You challenge a PENDING genome under the SEALED GOAL and LIVE SIGNAL.
+Challenge a PENDING genome under SEALED GOAL and LIVE SIGNAL.
 
-SEALED GOAL:
-{goal}
-
-PENDING GENOME:
-rule_mode={p_mode} threshold_milli={p_thr} fitness_milli={p_fit}
-note={p_note}
-committed_fitness_milli={live_fit}
-
-SIGNAL (truncated):
-{str(body)[:5000] if body is not None else ""}
+GOAL: {goal}
+PENDING: mode={p_mode} threshold={p_thr} fitness={p_fit} note={p_note}
+committed_fitness={live_fit}
+SIGNAL: {str(body)[:5000] if body is not None else ""}
 
 Return ONLY JSON:
 - decision: "REVERT" or "UPHOLD"
-- note: short reason
+- note: short
 
-REVERT if pending is unsupported, unsafe, or fitness unjustified.
-UPHOLD if pending remains justified.
+REVERT if pending unsupported or fitness unjustified; else UPHOLD.
 """
             raw = gl.nondet.exec_prompt(prompt)
             obj = _parse_json(str(raw))
@@ -477,7 +489,7 @@ UPHOLD if pending remains justified.
                 "parent_genome_hash": prev_fp[:120],
             }
         )
-        self.history.append(rec)
+        self._history_push(rec)
 
         self.pending_active = False
         self.pending_rule_mode = "CLOSED"
@@ -511,22 +523,16 @@ UPHOLD if pending remains justified.
                     }
                 )
             prompt = f"""
-Score how well the LIVE GENOME still fits the SEALED GOAL given SIGNAL.
-
+Score live genome vs SEALED GOAL given SIGNAL.
 GOAL: {goal}
 GENOME: mode={mode} threshold={thr} note={note}
 committed_fitness_milli={committed}
-
-SIGNAL (truncated):
-{str(body)[:5000]}
+SIGNAL: {str(body)[:5000]}
 
 Return ONLY JSON:
 - decision: "STABLE" or "DRIFT"
 - live_fitness_milli: 0-1000
 - note: short
-
-DRIFT if the signal no longer supports the genome (live fitness meaningfully below committed).
-STABLE otherwise.
 """
             raw = gl.nondet.exec_prompt(prompt)
             obj = _parse_json(str(raw))
