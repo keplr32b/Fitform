@@ -4,166 +4,124 @@
 
 FitForm is a GenLayer Intelligent Contract on the **Lifeform** track:
 
-> A self-evolving contract whose **bounded genome** (rules / parameters) updates only when multi-validator consensus agrees that fitness **improved** under a **sealed goal** and live public signal — not free-form LLM code rewrite.
+> A self-evolving contract that mutates a **bounded genome** and **selects** under fitness pressure and a dispute window before new rules go live — not free-form source-code mutation.
 
-It rewrites **its rules** on a loop. It does not deploy arbitrary mutated Python source as its identity.
+Foundation-style organisms mutate freely. FitForm mutates **and selects**.
 
 ## Track fit
 
 Official idea: *Lifeform — a self-evolving contract that rewrites itself on a loop.*
 
-FitForm interpretation:
+- “Itself” = sealed goal + live genome (`rule_mode`, `threshold_milli`, `rule_note`)
+- “On a loop” = permissionless `recheck` and `propose_evolve` (no admin keeper, no in-contract auto-queue)
+- No human vote required for evolution
 
-- “Itself” = sealed goal + mutable genome (rule text, thresholds, policy params)
-- “Rewrites on a loop” = anyone may call `evolve`; state advances only on consensus **IMPROVED**
-- No human vote; no multi-sig council required for evolution
-
-## Versus GenLayer Foundation Living Organism
+## Versus Foundation Living Organism
 
 | | Foundation Living Organism | FitForm |
 |--|----------------------------|---------|
-| What evolves | Full contract **source code** | Bounded **genome** (params / rule text) |
-| Accept rule | Structural preserve (class, evolve, storage, …) | **IMPROVED** fitness vs sealed goal + signal |
-| Deployment pattern | Always `deploy_contract` child generation | Same contract state update (v1); optional lineage later |
-| Success signal | Meaningful mutation + structure checks | Measurable fitness increase |
-| Failure mode | Broken child; parent intact | Reject evolve; genome unchanged |
-
-FitForm is intentionally **stricter** on accept conditions and **narrower** on what may change.
-
-## Non-goals
-
-- Full Python source mutation / `exec` of model output as contract body
-- Forcing non-integrating contracts
-- Intelligent stablecoin / peg
-- Emergency exploit halt (see HaltGate — separate product)
-- Owner silently rewriting fitness or goal after deploy
-- Mainnet SLA claims without audit and real integrators
-
-## Adversarial model
-
-| Attack | Mitigation |
-|--------|------------|
-| Clone / “already built” | Different mechanism; public vs-table; no source-factory identity |
-| Fake IMPROVED prose | Closed labels only; comparative equivalence on `decision`; require `new_fitness > last_fitness` |
-| Bad or empty fetch | Fail-closed → REJECTED; never IMPROVED on empty body |
-| SSRF / bad hosts | Owner allowlist; HTTPS-only; reject IP, localhost, userinfo, `.local` |
-| Evolve spam | Cooldown (`time.time()`); gas cost; v2 bond |
-| Owner capture | `goal_text` immutable; owner may manage hosts only (v1) |
-| Integrator ignore | Soft enforce by design; reference subject + integration guide |
-| LLM variance | Parse fail → REJECTED; no default IMPROVED |
+| What evolves | Full contract source code | Bounded genome (rule_mode + threshold) |
+| Selection | Structure checks only | Fitness + PENDING dispute + COMMIT |
+| Deployment | Child contracts via deploy_contract | Same contract; live genome updates on COMMIT |
+| Loop | Permissionless evolve | Permissionless recheck + propose + challenge + finalize |
+| Failure | Broken child; parent intact | REJECTED / REVERT / EXTINCT |
 
 ## Lifecycle
 
-DEPLOY
-  owner, goal_text (immutable), initial genome, signal config
-    ↓
-ALLOW_HOST (owner)
-    ↓
-EVOLVE (anyone, after cooldown)
-  fetch signal → propose genome + fitness
-  consensus: IMPROVED | REJECTED
-    ↓
-IMPROVED → write genome, last_fitness, generation++
-REJECTED → no state change
-    ↓
-SUBJECT contracts read genome / allows() before privileged actions
+propose_evolve
+  → REJECTED  (no pending; live unchanged)
+  → PENDING   (staged genome; allows() uses LIVE only)
 
-## Core API (v1)
+challenge (while window open)
+  → REVERT    (clear pending only; live unchanged)
+  → UPHOLD    (pending remains)
 
-| Method | Who | Role |
-|--------|-----|------|
-| allow_host / disallow_host | Owner | Signal hygiene |
-| evolve | Anyone (post-cooldown) | Propose + consensus fitness gate |
-| get_genome / get_goal / get_generation / get_last_fitness | View | Read state |
-| allows | View | Integrator surface |
-| is_host_allowed | View | Debug |
-| get_owner | View | Owner address |
+finalize_evolve (after challenge window)
+  → COMMIT    (live = pending; generation++; fitness; parent hash; history)
 
-## Frozen signatures (Step 2)
+recheck
+  → STABLE | DRIFT  (no silent write; anyone may propose after)
 
-### Storage
+allows(action) reads LIVE genome only
 
-- owner: Address
-- goal_text: str
-- rule_text: str
-- threshold_milli: u256
-- signal_url: str
-- generation: u256
-- last_fitness_milli: u256
-- last_evolve_at: u256
-- allowed_hosts: TreeMap[str, bool]
+## Genome
 
-### Constructor
+Live genes (deterministic allows):
 
-__init__(goal_text: str, rule_text: str, threshold_milli: u256, signal_url: str)
+- `rule_mode`: CLOSED | OWNER_ONLY | OPEN
+- `threshold_milli`: 0–1000
+- `rule_note`: rationale string (stored; does not gate allows)
 
-### Methods
+allows("withdraw"):
 
-- allow_host(host: str) -> None — owner
-- disallow_host(host: str) -> None — owner
-- evolve() -> str — returns IMPROVED or REJECTED
-- get_goal() -> str
-- get_genome() -> str — JSON with rule_text, threshold_milli, signal_url
-- get_generation() -> u256
-- get_last_fitness() -> u256
-- allows(action: str) -> bool
-- is_host_allowed(host: str) -> bool
-- get_owner() -> Address
+- CLOSED → false
+- OWNER_ONLY → false for general subject demo callers (subject treats as restricted unless mode OPEN)
+- OPEN → true only if threshold_milli < 700
 
-### Constants
+Subject demo must show CLOSED (or restricted) then OPEN after a COMMIT that sets rule_mode OPEN and threshold_milli under 700.
 
-- COOLDOWN_SECS = 60 (demo default; document as parameter intent for later)
+## Fitness and DRIFT
 
-## Consensus rules (v1)
+- `committed_fitness_milli` updated on COMMIT
+- recheck fetches allowlisted HTTPS signal and scores live_fitness under sealed goal
+- DRIFT if live_fitness + 50 < committed_fitness
+- otherwise STABLE
+- propose prompt includes recent history entries
 
-- Labels: IMPROVED | REJECTED only (no soft “maybe”)
-- Comparative principle: equivalent iff decision identical
-- Note / reasoning non-binding
-- IMPROVED requires parsed fitness strictly greater than last_fitness and goal-consistent judgment on signal
-- Otherwise REJECTED
+## Lineage
 
-## Integration model
+On COMMIT:
 
-Soft enforcement (same class as many GenLayer primitives):
+- generation increments by 1
+- parent_genome_hash set from previous live genome fingerprint
+- history appends one JSON record (mode, threshold, fitness, note)
 
-genome = fitform.view().get_genome()
-# or
+## EXTINCT
+
+- failed_propose_count increments on REJECTED propose
+- resets to 0 on COMMIT
+- if failed_propose_count >= 5 → extinct = true
+- if extinct: allows always false; propose, challenge, and finalize revert
+
+## Consensus
+
+Closed labels only. Comparative equivalence on decision field.
+
+- propose: REJECTED | PENDING
+- challenge: REVERT | UPHOLD
+
+## Integration
+
+Soft enforce:
+
 if not fitform.view().allows("withdraw"):
     revert
 
-Reference Subject contract in-repo must demonstrate behavior change after an IMPROVED evolve.
+Subject must prove restricted behavior then OPEN + act ok after an opening COMMIT.
 
-## v1 vs v2
+## Non-goals
 
-| v1 (ship) | v2 (designed, later) |
-|-----------|----------------------|
-| Single allowlisted signal URL | Multi-signal / quorum |
-| Cooldown only | Evolve bond / slash path |
-| Same-contract genome update | Optional IMPROVED-only child lineage |
-| Owner host admin | Narrower governance / timelock on big jumps |
-| Studionet E2E | Audit + external integrator |
+- Full Python source mutation or deploy_contract children
+- In-contract auto-queue of propose from recheck
+- Multi-sig evolution council
+- Challenge bond (cooldown and gas only for this ship)
+- Internal on-chain usage metrics as fitness
+- HaltGate-style exploit halt
 
-## Limits (always document)
+## Limits
 
-- Soft enforce: non-calling contracts ignore FitForm
-- Genome is bounded; not arbitrary code evolution
-- Signal quality depends on allowlisted sources
-- Studionet / test deployments are not a production SLA
+- Soft enforce; contracts must call allows
+- Studionet is not a production SLA
 - LLM judgment is point-in-time under closed labels
-- Mainnet production requires audit, parameters, and real integrators beyond this design
+- Permissionless loop needs external callers
 
-## Success criteria (before any “done”)
+## Success criteria
 
-1. Live IMPROVED path changes genome and generation
-2. Live REJECTED path leaves genome unchanged
-3. Subject gated action differs pre/post IMPROVED
-4. Unauthorized host / empty signal cannot IMPROVED
-5. README vs-official table + limits visible
+1. REJECTED propose leaves live genome unchanged
+2. PENDING does not change allows until COMMIT
+3. REVERT clears pending only
+4. COMMIT updates generation, fitness, history; allows can flip to OPEN
+5. recheck returns STABLE or DRIFT; unauthorized host and cooldown revert
+6. Subject restricted then OPEN with act ok after opening COMMIT
+7. README states mutation + selection vs Foundation free mutation
 
-## Live Studionet (summary)
-
-See verification/studionet-e2e.md for full receipts.
-
-- IMPROVED: 0xC385015C5d5D4E501117e479036d7362E8aE4d42 (generation 1, fitness 870)
-- REJECTED demo: 0x239C2a2ecBE5fC85Dccb245255856f98F9e1702A
-- Subject: 0x9344A6aE69fD53FBBBbaD075898E93Bb9EDee294 (RESTRICTED, act blocked)
