@@ -48,7 +48,7 @@ challenge (while open) → REVERT | UPHOLD
 finalize_evolve (after window) → COMMIT
 recheck → STABLE | DRIFT
 allows() reads LIVE genome only
-```text
+```
 
 ## Non-goals
 
