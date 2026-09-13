@@ -1,45 +1,31 @@
 # FitForm — Studionet E2E
 
-## Instances
+## Contracts
 
 | Role | Address |
 |------|---------|
-| FitForm REJECTED demo | [0x239C2a2ecBE5fC85Dccb245255856f98F9e1702A](https://explorer-studio.genlayer.com/address/0x239C2a2ecBE5fC85Dccb245255856f98F9e1702A) |
-| FitForm IMPROVED | [0xC385015C5d5D4E501117e479036d7362E8aE4d42](https://explorer-studio.genlayer.com/address/0xC385015C5d5D4E501117e479036d7362E8aE4d42) |
-| ExampleSubject | [0x9344A6aE69fD53FBBBbaD075898E93Bb9EDee294](https://explorer-studio.genlayer.com/address/0x9344A6aE69fD53FBBBbaD075898E93Bb9EDee294) |
+| FitForm | [0xf34d61dce2561A19a8691D966010F0B0C1377286](https://explorer-studio.genlayer.com/address/0xf34d61dce2561A19a8691D966010F0B0C1377286) |
+| ExampleSubject | [0x77677DA6ebd88c9a5DEAa19aCF5025E10e427CfC](https://explorer-studio.genlayer.com/address/0x77677DA6ebd88c9a5DEAa19aCF5025E10e427CfC) |
 
-## REJECTED path (goal mismatched to withdraw-safety vs docs)
+## Path: CLOSED → PENDING → COMMIT → OPEN
 
-| Step | Result |
-|------|--------|
-| Deploy | [0xfb34d23ddea213b315ecb5a9c538c69f703814b0cfd5bda0b58efaff2cb539d2](https://explorer-studio.genlayer.com/tx/0xfb34d23ddea213b315ecb5a9c538c69f703814b0cfd5bda0b58efaff2cb539d2) |
-| allow_host docs.genlayer.com | ok |
-| evolve | **REJECTED** — [0x4c003110da31ec5f0eb36f89ea6c5a3e8e9e4db620657ea0918a310c5ce772da](https://explorer-studio.genlayer.com/tx/0x4c003110da31ec5f0eb36f89ea6c5a3e8e9e4db620657ea0918a310c5ce772da) |
-| generation / fitness | remain 0 |
-
-## IMPROVED path (goal aligned to official docs signal)
-
-| Step | Result |
-|------|--------|
-| Deploy | [0xe2d375ae3df84dabd5dfec775aac655beac6308d2f24274355305f74a37e7133](https://explorer-studio.genlayer.com/tx/0xe2d375ae3df84dabd5dfec775aac655beac6308d2f24274355305f74a37e7133) |
-| allow_host docs.genlayer.com | ok |
-| evolve | **IMPROVED** — [0x79ed24d7af03d799dcd91a6a5583cb20a4ab84646ae5ef56617821cd6a0dadbc](https://explorer-studio.genlayer.com/tx/0x79ed24d7af03d799dcd91a6a5583cb20a4ab84646ae5ef56617821cd6a0dadbc) |
-| generation | **1** |
-| last_fitness | **870** |
-| genome | rule_text updated; threshold_milli 780 |
-
-## Subject integration
-
-| Step | Result |
-|------|--------|
-| Deploy subject with FitForm IMPROVED | [0x278373c0c66612983b1b1ce021217a6b7a46539d5a8d8a09aaec2d9f9bb204b2](https://explorer-studio.genlayer.com/tx/0x278373c0c66612983b1b1ce021217a6b7a46539d5a8d8a09aaec2d9f9bb204b2) |
-| status | **RESTRICTED** (threshold 780 not under 700) |
-| act | ERROR `action not allowed by FitForm` — [0x0de8076614727d43e449fedb4b3280e6c6122097335fb03e4d3d594ca8f879a8](https://explorer-studio.genlayer.com/tx/0x0de8076614727d43e449fedb4b3280e6c6122097335fb03e4d3d594ca8f879a8) |
-| get_acts | 0 |
+| Step | Result | Tx / note |
+|------|--------|-----------|
+| Deploy FitForm | SUCCESS | [0x3cf5a871…](https://explorer-studio.genlayer.com/tx/0x3cf5a87153603c17ff4d560d6e5daf6e2e063101f9b734825aaca3aa24e3e3cf) |
+| allow_host docs.genlayer.com | ok | host only (not full URL) |
+| allows(withdraw) initial | false | CLOSED |
+| propose_evolve | **PENDING** OPEN/550/fitness 850 | [0xd41edc97…](https://explorer-studio.genlayer.com/tx/0xd41edc97485144fca8a41dbc43f74e2c27897ddb8f43f3add12c1b66dc6721db) |
+| allows while pending | false | live genome unchanged |
+| challenge after window | revert challenge window closed | window enforcement |
+| finalize_evolve | **COMMIT** | generation 1 |
+| get_genome | OPEN, 550, fitness 850, parent CLOSED\|800\|… | |
+| allows(withdraw) | **true** | |
+| Subject deploy | SUCCESS | [0x1d2e1ebc…](https://explorer-studio.genlayer.com/tx/0x1d2e1ebcd4d58fe19cbc4b87aecad6158d9e67f3fe9a77233668093144926147) |
+| status / act / get_acts | OPEN / ok / 1 | |
 
 ## Design checks
 
-- IMPROVED only when fitness rises under sealed goal + signal
-- REJECTED leaves genome unchanged
-- Soft enforce via `allows` + subject `view()` call
-- Not full-source Living Organism factory
+- Mutation + selection (fitness gate + dispute window)
+- Pending does not change allows
+- COMMIT updates lineage (parent_genome_hash + history)
+- Not Foundation source-factory lifeform
