@@ -1,16 +1,16 @@
-# FitForm — Design
+# FitForm - Design
 
 ## Thesis
 
 FitForm is a GenLayer Intelligent Contract on the **Lifeform** track:
 
-> A self-evolving contract that mutates a **bounded genome** and **selects** under fitness pressure and a dispute window before new rules go live — not free-form source-code mutation.
+> A self-evolving contract that mutates a **bounded genome** and **selects** under fitness pressure and a dispute window before new rules go live - not free-form source-code mutation.
 
 Foundation-style organisms mutate freely. FitForm mutates **and selects**.
 
 ## Track fit
 
-Official idea: *Lifeform — a self-evolving contract that rewrites itself on a loop.*
+Official idea: *Lifeform - a self-evolving contract that rewrites itself on a loop.*
 
 - “Itself” = sealed goal + live genome (`rule_mode`, `threshold_milli`, `rule_note`)
 - “On a loop” = permissionless `recheck` and `propose_evolve` (no admin keeper, no in-contract auto-queue)
