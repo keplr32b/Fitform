@@ -38,7 +38,7 @@ Full receipts: [verification/studionet-e2e.md](verification/studionet-e2e.md)
 
 ## Design
 
-[docs/DESIGN.md](docs/DESIGN.md)
+[docs/design.md](docs/design.md)
 
 ## Core flow
 
