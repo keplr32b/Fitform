@@ -3,8 +3,10 @@
 FitForm — mutation + selection on a bounded genome (Lifeform track).
 propose → challenge → finalize; recheck STABLE|DRIFT; EXTINCT after repeated REJECTED.
 
-Consensus: propose_evolve binds decision, rule_mode, threshold_milli, fitness_milli
-(all fields that are persisted and later finalized into allows()).
+Steward-safe propose_evolve:
+  - Comparative consensus agrees only on decision (PENDING | REJECTED).
+  - On PENDING, rule_mode / threshold_milli / fitness_milli are derived
+    deterministically (not from unbound leader LLM fields).
 """
 
 from genlayer import *
@@ -21,6 +23,10 @@ CHALLENGE_SECS = 300
 MAX_FAILURES = 5
 DRIFT_MARGIN = 50
 OPEN_THRESHOLD = 700
+# Deterministic pending genome (after agreed PENDING)
+PENDING_MODE = "OPEN"
+PENDING_THRESHOLD = 550
+PENDING_FITNESS_STEP = 100
 
 
 def require(cond: bool, msg: str) -> None:
@@ -293,16 +299,12 @@ class FitForm(gl.Contract):
                 return json.dumps(
                     {
                         "decision": "REJECTED",
-                        "rule_mode": live_mode,
-                        "threshold_milli": live_thr,
-                        "rule_note": live_note,
-                        "fitness_milli": live_fit,
                         "note": "empty signal",
                     }
                 )
             prompt = f"""
-You propose a bounded policy genome under a SEALED GOAL using a LIVE SIGNAL.
-PENDING only if fitness strictly improves.
+You decide whether the live signal supports improving the sealed-goal policy genome.
+Return ONLY JSON with field decision: "PENDING" or "REJECTED", and optional note.
 
 SEALED GOAL:
 {goal}
@@ -319,56 +321,30 @@ RECENT HISTORY:
 LIVE SIGNAL (truncated):
 {str(body)[:5500]}
 
-Return ONLY JSON:
-- decision: "PENDING" or "REJECTED"
-- rule_mode: CLOSED|OWNER_ONLY|OPEN
-- threshold_milli: 0-1000
-- rule_note: short string
-- fitness_milli: 0-1000
-- note: short reason
-
 Rules:
-- PENDING only if fitness_milli > {live_fit} and genome is goal-consistent with the signal.
-- If official GenLayer docs clearly describe intelligent contracts and developer guidance, prefer PENDING with higher fitness, rule_mode OPEN, and threshold_milli between 400 and 650.
-- If signal is weak or unrelated, REJECTED and fitness_milli <= {live_fit}.
-- All of decision, rule_mode, threshold_milli, and fitness_milli are consensus-critical.
+- PENDING only if the signal clearly supports a goal-consistent improvement
+  (e.g. official GenLayer docs covering intelligent contracts / GenVM / developer guidance).
+- REJECTED if signal is weak, empty, or unrelated.
+- Do not invent numeric thresholds; decision only.
 """
             raw = gl.nondet.exec_prompt(prompt)
             obj = _parse_json(str(raw))
             d = str(obj.get("decision", "")).strip().upper()
             if d not in ("PENDING", "REJECTED"):
                 d = "REJECTED"
-            mode = _norm_mode(str(obj.get("rule_mode", live_mode)))
-            try:
-                thr = _clamp_milli(int(obj.get("threshold_milli", live_thr)))
-            except Exception:
-                thr = live_thr
-            try:
-                fit = _clamp_milli(int(obj.get("fitness_milli", live_fit)))
-            except Exception:
-                fit = live_fit
-            note = str(obj.get("rule_note", live_note)).strip()[:400]
-            if d == "PENDING" and fit <= live_fit:
-                d = "REJECTED"
             return json.dumps(
                 {
                     "decision": d,
-                    "rule_mode": mode,
-                    "threshold_milli": thr,
-                    "rule_note": note,
-                    "fitness_milli": fit,
                     "note": str(obj.get("note", ""))[:200],
                 }
             )
 
-        # Steward fix: bind every field that is persisted and finalized
+        # Agree only on decision; consequential fields derived deterministically below
         out = gl.eq_principle.prompt_comparative(
             judge,
             (
-                "EQUIVALENT iff decision is identical AND rule_mode is identical "
-                "AND threshold_milli is identical AND fitness_milli is identical. "
-                "rule_note and note may differ. If any of decision, rule_mode, "
-                "threshold_milli, or fitness_milli differs => NOT equivalent."
+                "EQUIVALENT iff decision is identical (PENDING or REJECTED). "
+                "note may differ. Other fields are ignored and not persisted."
             ),
         )
         agreed = _parse_json(str(out))
@@ -384,23 +360,16 @@ Rules:
                 self.extinct = True
             return "REJECTED"
 
-        try:
-            fit = _clamp_milli(int(agreed.get("fitness_milli", live_fit)))
-        except Exception:
-            self.failed_propose_count = self.failed_propose_count + u256(1)
-            return "REJECTED"
+        # Deterministic pending genome from agreed PENDING only (not leader LLM numbers)
+        mode = PENDING_MODE
+        thr = PENDING_THRESHOLD
+        fit = _clamp_milli(live_fit + PENDING_FITNESS_STEP)
         if fit <= live_fit:
             self.failed_propose_count = self.failed_propose_count + u256(1)
             if self.failed_propose_count >= u256(MAX_FAILURES):
                 self.extinct = True
             return "REJECTED"
-
-        try:
-            thr = _clamp_milli(int(agreed.get("threshold_milli", live_thr)))
-        except Exception:
-            thr = live_thr
-        mode = _norm_mode(str(agreed.get("rule_mode", live_mode)))
-        note = str(agreed.get("rule_note", live_note)).strip()[:400]
+        note = "Deterministic OPEN genome after consensus PENDING"
 
         self.pending_active = True
         self.pending_rule_mode = mode
