@@ -77,6 +77,9 @@
 ## Notes
 
 - Cooldown is measured from last `propose_evolve`, not finalize. After a 300s challenge window the cooldown has usually already elapsed; prove cooldown via rapid proposes only when not pending (e.g. after REJECTED).
+
 - allow_host must be hostname (`docs.genlayer.com`), not `https://...`.
+
 - Pending proposals do not change `allows` until COMMIT.
+
 - Resubmit build: decision-only consensus; consequential genome fields deterministic on PENDING.
