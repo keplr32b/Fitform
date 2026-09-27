@@ -2,6 +2,9 @@
 """
 FitForm — mutation + selection on a bounded genome (Lifeform track).
 propose → challenge → finalize; recheck STABLE|DRIFT; EXTINCT after repeated REJECTED.
+
+Consensus: propose_evolve binds decision, rule_mode, threshold_milli, fitness_milli
+(all fields that are persisted and later finalized into allows()).
 """
 
 from genlayer import *
@@ -328,6 +331,7 @@ Rules:
 - PENDING only if fitness_milli > {live_fit} and genome is goal-consistent with the signal.
 - If official GenLayer docs clearly describe intelligent contracts and developer guidance, prefer PENDING with higher fitness, rule_mode OPEN, and threshold_milli between 400 and 650.
 - If signal is weak or unrelated, REJECTED and fitness_milli <= {live_fit}.
+- All of decision, rule_mode, threshold_milli, and fitness_milli are consensus-critical.
 """
             raw = gl.nondet.exec_prompt(prompt)
             obj = _parse_json(str(raw))
@@ -357,9 +361,15 @@ Rules:
                 }
             )
 
+        # Steward fix: bind every field that is persisted and finalized
         out = gl.eq_principle.prompt_comparative(
             judge,
-            "The decision field must be identical. Other fields may differ.",
+            (
+                "EQUIVALENT iff decision is identical AND rule_mode is identical "
+                "AND threshold_milli is identical AND fitness_milli is identical. "
+                "rule_note and note may differ. If any of decision, rule_mode, "
+                "threshold_milli, or fitness_milli differs => NOT equivalent."
+            ),
         )
         agreed = _parse_json(str(out))
         decision = str(agreed.get("decision", "REJECTED")).strip().upper()
